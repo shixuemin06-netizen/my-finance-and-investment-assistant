@@ -1,0 +1,26 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+tmp/
+*.tsbuildinfo
+
+# Local configuration and credentials
+.claude/
+.env
+.env.*
+!.env.example
+
+# Local run data, backups, and logs
+data/*.db
+data/*.db-*
+data/backups/
+data/json_backup_*/
+logs/
+outputs/
+*.log
+
+# Local-only artifacts and reference material
+*.lnk
+audit-*.png
+参考文献和建站思路/

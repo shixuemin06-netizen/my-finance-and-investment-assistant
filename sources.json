@@ -1,0 +1,40 @@
+{
+  "official": [
+    { "id": "csrc", "name": "证监会要闻", "enabled": true },
+    { "id": "pboc", "name": "人民银行政策公告", "enabled": true }
+  ],
+  "rss": [
+    { "name": "雪球热帖", "url": "https://xueqiu.com/hots/topic/rss", "enabled": true, "tier": "community", "isPrimary": false }
+  ],
+  "websites": [
+    {
+      "name": "东方财富-财经要闻",
+      "listUrl": "https://finance.eastmoney.com/a/czqyw.html",
+      "articleSelector": ".title a, h3 a, .list a[href*='eastmoney.com']",
+      "enabled": true,
+      "tier": "media",
+      "isPrimary": false
+    },
+    {
+      "name": "证券时报",
+      "listUrl": "https://www.stcn.com/article/list.html",
+      "articleSelector": "a[href*='/article/'], a[href*='/news/']",
+      "enabled": true,
+      "tier": "media",
+      "isPrimary": false
+    }
+  ],
+  "wechat": [
+    { "name": "泽平宏观",           "sogouKeyword": "泽平宏观",           "priority": 1, "enabled": false },
+    { "name": "李大霄",             "sogouKeyword": "李大霄",             "priority": 1, "enabled": false },
+    { "name": "李迅雷金融与投资",    "sogouKeyword": "李迅雷金融与投资",    "priority": 1, "enabled": false },
+    { "name": "华尔街见闻",          "sogouKeyword": "华尔街见闻",         "priority": 1, "enabled": false },
+    { "name": "券商中国",           "sogouKeyword": "券商中国",           "priority": 1, "enabled": false },
+    { "name": "韩秀云讲经济",        "sogouKeyword": "韩秀云讲经济",       "priority": 2, "enabled": false },
+    { "name": "打板宝哥",           "sogouKeyword": "打板宝哥",           "priority": 2, "enabled": false },
+    { "name": "荀玉根思考",          "sogouKeyword": "荀玉根思考",         "priority": 2, "enabled": false },
+    { "name": "孟岩",              "sogouKeyword": "孟岩",              "priority": 2, "enabled": false },
+    { "name": "EncounterAlpha",    "sogouKeyword": "EncounterAlpha",    "priority": 2, "enabled": false }
+  ],
+  "x_accounts": []
+}

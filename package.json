@@ -1,0 +1,40 @@
+{
+  "name": "invest-daily",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "digest": "npx tsx pipeline/run.ts",
+    "import": "npx tsx pipeline/import.ts",
+    "test": "node --import tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0",
+    "iconv-lite": "^0.6.3",
+    "next": "latest",
+    "node-cron": "^3.0.0",
+    "openai": "^4.50.0",
+    "playwright": "^1.62.1",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-markdown": "^9.0.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
+  },
+  "overrides": {
+    "node-cron": {
+      "uuid": "^11.1.0"
+    }
+  }
+}

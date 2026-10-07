@@ -1,6 +1,6 @@
 # 财经观点台账
 
-2026-10-04 本轮精简重复的统计和说明，补全独立采集与每日邮件出口。本地自动运行任务已安装并完成真实更新；同一公开站点的 version 6 已发布成功。2026-10-07 复检：公网更新接口仍返回 Cloudflare 403，云端更新和邮件日程未启用，尚未发送邮件。使用与核验边界见 [自动更新说明](docs/AUTOMATIC_UPDATES.md)，版本回执见 [部署说明](DEPLOY_PUBLIC.md)。此前已发布的 version 5 和 AIHOT 对照记录见 [复检记录](docs/REVIEW-AIHOT-20261004.md)。
+2026-10-04 本轮精简重复的统计和说明，补全独立采集与每日邮件出口。本地自动运行任务已安装并完成真实更新；同一公开站点的 version 6 已发布成功。2026-10-07 复检：公网更新接口仍返回 Cloudflare 403，云端更新和邮件日程未启用，尚未发送邮件。使用与核验边界见 [自动更新说明](docs/AUTOMATIC_UPDATES.md)，版本回执见 [部署说明](DEPLOY_PUBLIC.md)。此前 version 5 的对照记录保存在 Git 历史，见 [文档索引](docs/README.md)。
 
 中国优先、覆盖主要经济体的个人宏观与产业阅读工具。本轮为单人本地完整版本，商业账户与支付尚未接入。
 
@@ -41,7 +41,8 @@ version 6 的云端公开版使用 D1 缓存，按小时检查固定的九个官
 - [统一视觉规范](docs/DESIGN.md)
 - [自动运行与邮件出口](docs/AUTOMATIC_UPDATES.md)
 - [来源与历史更新记录](docs/SOURCES-AND-UPDATES.md)
-- [验收记录](docs/ACCEPTANCE.md)
+- [来源使用权限](docs/SOURCE_RIGHTS.md)
+- [文档索引与历史记录](docs/README.md)
 
 ## 开发与验证
 
@@ -62,10 +63,14 @@ Next.js、React、SQLite 保持现有技术栈，生产构建可使用独立 FIN
 ## 文件与发布
 
 数据：data/invest.db；日志：logs/web.log、logs/worker.log、logs/background-task.log 与 background-launch 日志；私有配置：.env.local、data/automation-settings.json。
-改造前源文件与在线 SQLite 备份：outputs/product-rebuild-20260922/before/；截图与设计产物：outputs/product-rebuild-20260922/。
+历史 SQLite 快照集中保存在 data/backups/history/；真实数据仅存本地。
 源码新增表，不改写历史 events / claims 的日期语义。
-public-site/ 仍是原有独立静态样刊，本轮没有发布或覆盖它。未来商业化仍需真实用户的回访、研究积累与付费意愿验证。
+历史静态样刊位于 _archive/site-history/，仅作旧记录；当前公开阅读版见 cloud-reader/。未来商业化仍需真实用户验证。
 
 ## 公开阅读版（2026-09-26）
 该次交付已发布：[财经观点台账](https://finance-research-shi.shixuemin06.chatgpt.site)。当时的公开版包含资讯、日报和搜索，使用独立静态快照；手动导入、私人笔记、收藏关注和管理 API 留在本地。2026-10-04 的云端更新机制以 [自动更新说明](docs/AUTOMATIC_UPDATES.md) 为准。
-本轮首页判断、日期窗口、细分产业、七个官方来源、阅读设置及验收见[交付记录](docs/REFINEMENT-20260926.md)，公开更新方式见[部署说明](DEPLOY_PUBLIC.md)。示例配置使用GLM-5.3-Flash，真实材料开关需显式启用；现有.env.local配置保持不变。
+首页与阅读规则见 [产品说明](docs/PRODUCT.md) 和 [视觉规范](docs/DESIGN.md)，公开更新方式见 [部署说明](DEPLOY_PUBLIC.md)。示例配置使用 GLM-5.3-Flash，真实材料开关需显式启用。
+
+## 文件整理
+
+现役说明集中在 docs/，旧方案与阶段验收放在 Git 历史。参考 PDF 位于 resources/references/，KYC 材料位于 resources/private/；二者不提交到公开仓库。构建缓存与临时调试文件可删除，数据库、凭证和私人笔记不得混入提交。整理结果见 [清理记录](docs/CLEANUP.md)。

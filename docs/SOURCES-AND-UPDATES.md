@@ -1,3 +1,5 @@
+> 下方按日期记录当时的来源与实测结果，未在本次整理中复验。当前运行方式与云端限制以 [自动更新说明](AUTOMATIC_UPDATES.md) 和 [部署说明](../DEPLOY_PUBLIC.md) 为准。
+
 # 来源与自动更新
 
 ## 内容来源
@@ -41,4 +43,4 @@ AIHOT 用于观察精选、事件与日报组织，不接入其数据用于本�
 ## 2026-09-26 扩展与公开运行
 新增七个官方来源并完成真实采集：[EIA](https://www.eia.gov/tools/rssfeeds/)、[BEA](https://www.bea.gov/news/current-releases)、[欧洲委员会金融政策](https://finance.ec.europa.eu/finance-news-hub_en)、[METI](https://www.meti.go.jp/english/press/)、[工信部](https://www.miit.gov.cn/xwfb/)、[商务部](https://www.mofcom.gov.cn/xwfb/)、[文旅部](https://www.mct.gov.cn/whzx/)。本轮新增97篇，来源成功不保证未来每次可用。旧BLS/Eurostat/IMF仍会发生403或解析/网络失败，逐源隔离。
 官方RSS短正文补抓限制每源6页、并发2、8秒、1MB，仅同源HTML；附件/索引/错误页保留原始链接，不制造摘要。缺摘要显示具体状态，旧档案不自动付费重做。
-公开网址是独立静态快照；本地每小时更新不会自动改变已发布快照。云端没有采集器与模型密钥，新内容需重新导出和发布。详情见docs/REFINEMENT-20260926.md与DEPLOY_PUBLIC.md。
+公开网址是独立静态快照；本地每小时更新不会自动改变已发布快照。当时云端没有采集器，新内容需重新导出和发布。该期精修说明见 Git 提交 `91d6384` 中的 docs/REFINEMENT-20260926.md；后续云端机制见 [部署说明](../DEPLOY_PUBLIC.md)。

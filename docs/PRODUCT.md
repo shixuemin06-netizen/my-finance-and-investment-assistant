@@ -33,7 +33,7 @@
 阅读进度保存看到的事件版本；后续追加报道或摘要更新会成为新进展。
 笔记仅存于本地 SQLite，不进入模型请求。导出为 Markdown。
 页面查询不在读取时重建索引；索引在迁移、导入及更新任务中增量维护。
-改造前源码与在线 SQLite 备份：outputs/product-rebuild-20260922/before/。
+改造前 SQLite 快照：data/backups/history/product-rebuild-20260922-before/；源码阶段记录见 Git 历史。
 
 ## 使用验证
 实际任务：读懂一件变化 → 找到原始依据 → 完成一次关注与笔记 → 下一次访问检查新进展。

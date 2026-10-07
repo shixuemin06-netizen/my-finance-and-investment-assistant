@@ -24,9 +24,9 @@ outputs/
 # Local-only artifacts and reference material
 *.lnk
 audit-*.png
-参考文献和建站思路/
+resources/
 
-# 与当前发布版本无关的历史产物（见 _archive/README.md）
+# 仅本地保留的历史产物
 _archive/
 
 .next-production/

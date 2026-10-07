@@ -11,7 +11,7 @@
 以下只生成文件，不发送邮件、不启用定时任务：
 
 ```powershell
-node --import tsx scripts/email-digest.ts preview '--feed=outputs/aihot-review-20261004/public-publish/assets/public-data.json' '--site-url=https://finance-research-shi.shixuemin06.chatgpt.site/' '--date=2026-10-04' '--out=outputs/email-digest-20261004/preview'
+node --import tsx scripts/email-digest.ts preview '--feed=outputs/automation-upgrade-20261004/public-final/assets/public-data.json' '--site-url=https://finance-research-shi.shixuemin06.chatgpt.site/' '--date=2026-10-04' '--out=outputs/email-preview'
 ```
 
 也可显式使用 `--db=只读快照路径` 代替 `--feed=`。这一模式重新调用与公开网页相同的质量门槛，只读取 `source_type='crawled'` 的内容，数据库始终以只读模式打开。生成 `digest-email.html`、`digest-email.txt` 和机器可读 `digest-email.json`。收件人可以通过 `--recipient=邮箱` 显式加入 JSON。

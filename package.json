@@ -4,12 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "digest": "npx tsx pipeline/run.ts",
+    "dev": "node node_modules/next/dist/bin/next dev --webpack -H 127.0.0.1 --port 3099",
+    "build": "node node_modules/next/dist/bin/next build --webpack",
+    "start": "node scripts/local.mjs start",
+    "digest": "node --env-file-if-exists=.env.local --import tsx pipeline/run.ts",
     "import": "npx tsx pipeline/import.ts",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "research:backfill": "npx tsx scripts/backfill-research.ts",
+    "export:public": "tsx scripts/export-public-site.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "doctor": "node scripts/local.mjs doctor"
   },
   "dependencies": {
     "axios": "^1.7.0",

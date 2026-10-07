@@ -1,20 +1,10 @@
-import db from '@/lib/db';
-import TodayDashboard from '@/components/TodayDashboard';
-import { readTable } from '@/lib/db';
-import type { ArticleRow, DigestRow, DivergenceRow, KeywordTrendRow, SummaryRow } from '@/lib/types';
-
-export default function Home() {
-  const digest = db
-    .prepare('SELECT * FROM digests ORDER BY date DESC LIMIT 1')
-    .get() as DigestRow | undefined;
-
-  return (
-    <TodayDashboard
-      digest={digest}
-      articles={(readTable('articles') as ArticleRow[]).sort((a, b) => b.id - a.id)}
-      summaries={(readTable('summaries') as SummaryRow[]).sort((a, b) => b.id - a.id)}
-      divergences={(readTable('divergence') as DivergenceRow[]).sort((a, b) => b.id - a.id)}
-      trends={readTable('keywords_trend') as KeywordTrendRow[]}
-    />
-  );
-}
+import Link from 'next/link';
+import AppShell from '@/components/AppShell';
+import StoryList,{StoryRail} from '@/components/StoryList';
+import TrendBrief from '@/components/TrendBrief';
+import ReaderIcon from '@/components/ReaderIcon';
+import {overview} from '@/lib/stories';
+import {formatDate} from '@/lib/reader';
+import {readingFreshness} from '@/lib/reading-freshness';
+export const dynamic='force-dynamic';
+export default function Home(){const {selected,world,china,followed,status,window,background}=overview();const freshness=readingFreshness(status.latest);return <AppShell><main className="reader-layout"><div className="primary-column"><header className="page-heading overview-masthead"><p className="eyebrow">宏观与产业情报</p><div className="heading-line"><h1>本期阅读总览</h1><time>{window.historical?"最近发布 "+window.day:formatDate(new Date().toISOString())}</time></div></header><section className="edition-status" data-freshness-state={freshness.state} aria-label="资料时效"><div className="freshness"><strong>{freshness.label}</strong><span>最近收录 {formatDate(status.latest,true)}</span><span>最近检查 {formatDate(status.checked,true)}</span></div>{window.historical&&<p className="public-snapshot-note">当前显示 {window.day} 发布的历史资料。</p>}</section><div className="section-heading"><h2>重要变化 <span className="count">{selected.length}</span></h2><span className="brief-date">{window.label}</span><Link href="/macro">宏观全览 →</Link></div><StoryList items={selected} numbered/><TrendBrief/><section className="china-section"><div className="section-heading"><h2>中国宏观</h2><Link href="/macro?region=china">更多 →</Link></div><StoryRail items={china} empty="这一发布窗口暂无中国宏观材料。"/></section></div><aside className="context-rail"><section><div className="section-heading"><h2><ReaderIcon name="globe"/>全球动态</h2><Link href="/macro?region=global">查看 →</Link></div><p className="quiet-copy">{window.label} · 海外主要经济体</p><StoryRail items={world} empty="这一发布窗口暂无海外宏观材料，较早发布在持续跟踪区。"/></section><section><div className="section-heading"><h2><ReaderIcon name="research"/>关注的新进展</h2><Link href="/research">全部 →</Link></div><StoryRail items={followed} empty="还没有关注的事件。"/>{!followed.length&&<Link className="text-link" href="/macro">选择跟踪事件 →</Link>}</section><section><div className="section-heading"><h2>持续跟踪背景</h2></div><p className="quiet-copy">较早发布，供对照政策与统计周期。</p><StoryRail items={background} empty="暂无较早背景材料。"/><Link href="/daily" className="text-link">阅读财经日报 →</Link></section></aside></main></AppShell>;}

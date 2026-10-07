@@ -1,68 +1,17 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
-import JobStatus from './JobStatus';
-
-type AppShellProps = {
-  children: ReactNode;
-  active?: 'today' | 'matrix' | 'archive' | 'import';
-  eyebrow?: string;
-};
-
-const navItems = [
-  { key: 'today', href: '/', label: '今日简报' },
-  { key: 'matrix', href: '/matrix', label: '观点矩阵' },
-  { key: 'archive', href: '/archive', label: '历史归档' },
-  { key: 'import', href: '/import', label: '文章收件箱' },
-] as const;
-
-export default function AppShell({ children, active = 'today', eyebrow }: AppShellProps) {
-  return (
-    <div className="app-shell">
-      <aside className="side-nav">
-        <Link href="/" className="brand-mark" aria-label="财经观点台账首页">
-          <span className="brand-symbol">观</span>
-          <span>
-            <strong>财经观点台账 <span className="owner-tag">SHI</span></strong>
-            <small>SHI · 私人研究台</small>
-          </span>
-        </Link>
-
-        <nav className="side-nav-links" aria-label="主导航">
-          {navItems.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={active === item.key ? 'nav-link active' : 'nav-link'}
-            >
-              <span className="nav-index">0{navItems.indexOf(item) + 1}</span>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="side-nav-foot">
-          <span className="live-dot" />
-          <div>
-            <strong>本地运行</strong>
-            <small>数据仅保存在这台设备</small>
-          </div>
-        </div>
-      </aside>
-
-      <div className="app-stage">
-        <header className="top-bar">
-          <Link href="/" className="mobile-brand">财经观点台账</Link>
-          <nav className="mobile-nav" aria-label="移动端导航">
-            {navItems.map((item) => (
-              <Link key={item.key} href={item.href} className={active === item.key ? 'active' : ''}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          <JobStatus fallback={eyebrow || '本地 · 私有'} />
-        </header>
-        {children}
-      </div>
-    </div>
-  );
+import type {ReactNode} from 'react';
+import ReaderIcon from './ReaderIcon';
+import VisitTracker from './VisitTracker';
+import ReadingSettings from './ReadingSettings';
+type Active='today'|'macro'|'industry'|'daily'|'research'|'search'|'more'|'admin'|'matrix'|'archive'|'import'|'review'|'notebook'|'hot';
+const nav=[{key:'today',href:'/',label:'今日总览',icon:'home'},{key:'macro',href:'/macro',label:'宏观趋势',icon:'macro'},{key:'industry',href:'/industry',label:'产业前沿',icon:'industry'},{key:'daily',href:'/daily',label:'财经日报',icon:'daily'},{key:'research',href:'/research',label:'我的研究',icon:'research'}];
+export default function AppShell({children,active='today',eyebrow}:{children:ReactNode;active?:Active;eyebrow?:string}){
+ const key=({matrix:'search',archive:'daily',review:'admin',notebook:'research',hot:'industry'} as Record<string,string>)[active]||active;
+ return <div className="app-shell"><VisitTracker/><a className="skip-link" href="#page-content">跳到正文</a>
+ <aside className="side-nav"><Link href="/" className="brand-mark"><span className="brand-symbol" aria-hidden="true"><img src="/reader/cutout-4-faa830732ac5.webp" alt="" width={32} height={34}/></span><span><strong>财经观点台账</strong><small>宏观研究 · 个人知识库</small></span></Link>
+ <nav className="side-nav-links" aria-label="主导航">{nav.map(item=><div key={item.key}><Link href={item.href} className={'nav-link '+(key===item.key?'active':'')} aria-current={key===item.key?'page':undefined}><ReaderIcon name={item.icon}/>{item.label}</Link>{item.key==='industry'&&<div className="nav-subitems"><Link href="/industry?sector=ai">AI 与科技</Link><Link href="/industry?sector=semiconductor">半导体</Link><Link href="/industry?sector=manufacturing">先进制造</Link><Link href="/industry?sector=energy">能源与电力</Link><Link href="/industry?sector=tourism">文旅产业</Link><Link href="/industry?sector=consumer">新消费</Link></div>}</div>)}</nav>
+ <div className="side-nav-foot"><ReadingSettings/><Link href="/admin" className={'nav-link '+(key==='admin'?'active':'')}><ReaderIcon name="settings"/>管理</Link><p>本地研究空间<small>内容与笔记保存在本机</small></p></div></aside>
+ <div className="app-stage"><header className="top-bar"><Link className="mobile-brand" href="/">✳ 财经观点台账</Link><form action="/search" className="global-search" role="search"><ReaderIcon name="search" size={17}/><input name="q" aria-label="全站搜索" placeholder="搜索宏观、产业、事件与笔记…" maxLength={120}/><button type="submit" aria-label="提交搜索">搜索</button></form><div className="top-actions"><Link href="/import" aria-label="添加材料"><ReaderIcon name="plus"/><span>添加材料</span></Link><Link href="/research?tab=saved" aria-label="我的收藏"><ReaderIcon name="research"/></Link></div></header>
+ <div id="page-content" tabIndex={-1}>{children}</div><footer className="page-footer">资讯与日报 · 原始来源可核对<span>{eyebrow||'本地版本 · 不构成投资建议'}</span></footer></div>
+ <nav className="mobile-nav" aria-label="移动端导航">{[...nav.filter(n=>n.key!=='daily'),{key:'more',href:'/more',label:'更多',icon:'more'}].map(item=><Link href={item.href} key={item.key} className={key===item.key||(item.key==='more'&&['daily','admin','import','search'].includes(key))?'active':''}><ReaderIcon name={item.icon}/><span>{({today:'首页',macro:'宏观',industry:'产业',research:'研究'} as Record<string,string>)[item.key]||item.label}</span></Link>)}</nav></div>;
 }

@@ -28,6 +28,12 @@ export function normalizeDate(input: string | null | undefined): string | null {
   }).format(d);
 }
 
+/** SQL bucket for ISO timestamps (legacy local timestamps retain their local date). */
+export function beijingDateSql(column: string): string {
+  if (!/^(a\.)?(fetched_at|published_at)$/.test(column)) throw new Error('Unsupported date column');
+  return "CASE WHEN " + column + " LIKE '%Z' OR " + column + " LIKE '%+__:__' THEN date(" + column + ", '+8 hours') ELSE substr(" + column + ", 1, 10) END";
+}
+
 /** 北京时间的当前 ISO 时间戳（用于 fetched_at / generated_at） */
 export function beijingNow(): string {
   return new Date().toISOString();

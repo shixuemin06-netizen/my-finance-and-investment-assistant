@@ -1,0 +1,79 @@
+/* October review: one reading hierarchy for the local desk and public edition. */
+.top-bar { background: var(--surface); }
+.top-actions a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
+.nav-subitems a { font-size: 14px; }
+.page-heading h1 { font-size: 32px; font-weight: 700; line-height: 1.4; letter-spacing: -.7px; }
+.overview-masthead { padding-bottom: 18px; margin-bottom: 18px; border-bottom: 2px solid var(--accent); }
+.heading-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.edition-date { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.edition-status { padding: 12px 16px; margin-bottom: 22px; border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--surface); border-radius: 4px; }
+.edition-status .freshness { padding: 0; font-size: 13px; line-height: 1.8; gap: 4px 16px; }
+.edition-status .freshness strong { color: var(--ink); font-weight: 600; font-size: 14px; }
+.edition-status .freshness a { color: var(--accent); margin-left: auto; text-decoration: underline; text-underline-offset: 3px; }
+.edition-status .public-snapshot-note { margin: 3px 0 0; font-size: 13px; }
+.edition-status[data-freshness-state="stale"], .edition-status[data-freshness-state="unknown"] { border-left-color: var(--warning); }
+.edition-status[data-freshness-state="stale"] .freshness strong { color: var(--warning); }
+.footer-freshness { display: flex; align-items: center; justify-content: flex-end; gap: 4px 14px; flex-wrap: wrap; }
+.footer-freshness a { color: var(--accent); text-underline-offset: 3px; }
+.footer-freshness[data-freshness-state="stale"] [data-freshness-status], .footer-freshness[data-freshness-state="unknown"] [data-freshness-status] { color: var(--warning); }
+.edition-metrics { display: flex; gap: 32px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding: 0 0 20px; margin-bottom: 28px; }
+.edition-metrics a { display: flex; align-items: baseline; gap: 9px; }
+.edition-metrics strong { color: var(--ink); font-size: 23px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.edition-metrics span { color: var(--muted); font-size: 14px; }
+.section-note { font-size: 13px; color: var(--muted); margin: -6px 0 16px; }
+.home-materials .story-list { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; }
+.home-material { display: flex; gap: 16px; padding: 22px; }
+.home-material .story-number { flex-shrink: 0; width: 26px; padding-top: 3px; color: var(--accent); font-size: 14px; font-variant-numeric: tabular-nums; }
+.home-material h2 { font-size: 20px; line-height: 1.55; font-weight: 650; margin: 7px 0; }
+.home-material .story-summary { margin: 8px 0 12px; }
+.inline-label { font-size: 12px; color: var(--accent); font-weight: 600; margin-right: 8px; }
+.home-judgments { margin-top: 34px; }
+.home-judgments > .section-heading { border-top: 2px solid var(--accent); padding-top: 20px; }
+.key-change { border-left-width: 2px; padding: 22px; }
+.key-change h2 { font-size: 19px; }
+.change-reading dt { font-size: 14px; }
+.context-rail { background: var(--bg); }
+.context-rail .section-heading h2 { font-size: 18px; border-left: 2px solid var(--accent); padding-left: 10px; }
+.context-rail .rail-item { display: block; padding: 17px 0; }
+.context-rail .rail-item h3 { font-size: 16px; line-height: 1.65; }
+.issue-date { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); margin: 12px 0 6px; }
+.context-rail .text-link { display: inline-flex; align-items: center; min-height: 44px; }
+.reading-method ol { padding-left: 20px; font-size: 14px; color: var(--muted); line-height: 2; margin: 14px 0; }
+.public-filter-form label, .settings-panel label { font-size: 14px; }
+.story-meta, .reader-meta { font-size: 13px; }
+.trend-card details .digest-checks { margin: 14px 0; grid-template-columns: 1fr; }
+.trend-card details .digest-checks dd { font-size: var(--body-size); }
+.reading-main .reading-section > p, .digest-mechanism { line-height: 1.95; }
+.filter-panel button, .public-load-more button { min-height: 44px; }
+@media (min-width: 1101px) {
+  .reader-layout { grid-template-columns: minmax(0,1fr) 280px; }
+  .context-rail { padding: 32px 24px; }
+}
+@media (max-width: 768px) {
+  .page-heading h1 { font-size: 27px; }
+  .overview-masthead { padding-bottom: 14px; margin-bottom: 16px; }
+  .edition-status { padding: 11px 13px; margin-bottom: 20px; }
+  .edition-status .freshness a { margin-left: 0; }
+  .footer-freshness { justify-content: flex-start; margin-top: 6px; }
+  .page-footer .footer-freshness span { display: inline; margin: 0; }
+  .edition-metrics { gap: 12px 24px; padding-bottom: 17px; margin-bottom: 24px; }
+  .edition-metrics a { gap: 6px; }
+  .edition-metrics strong { font-size: 21px; }
+  .edition-metrics span { font-size: 13px; }
+  .home-material { gap: 10px; padding: 19px 14px; flex-wrap: nowrap; }
+  .home-material h2 { font-size: 18px; }
+  .home-material .story-number { width: 20px; }
+  .home-material .story-summary { font-size: var(--body-size); }
+  .home-judgments { margin-top: 28px; }
+  .key-change { padding: 18px 16px; }
+  .top-actions { gap: 14px; }
+  .top-actions a { font-size: 13px; }
+  .context-rail .rail-item h3 { font-size: 16px; }
+  .mobile-nav a { min-height: 44px; }
+}
+@media print {
+  .edition-status, .edition-metrics { break-inside: avoid; }
+  .context-rail { display: none; }
+  .reader-layout { display: block; }
+  .reading-main details > *, .daily-report-sheet details > * { display: block; }
+}

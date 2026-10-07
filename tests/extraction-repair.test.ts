@@ -1,0 +1,36 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {execFileSync,spawnSync} from 'node:child_process';
+import {DatabaseSync} from 'node:sqlite';
+import {contentFingerprint} from '../lib/content-fingerprint';
+test('repair refuses the original database before any read or mutation',()=>{
+ const result=spawnSync(process.execPath,['--import','tsx','scripts/repair-extraction.ts','--apply'],{encoding:'utf8'});
+ assert.notEqual(result.status,0);assert.match(result.stderr,/disposable database under outputs/);
+});
+test('source-date correction archives stale generation and preserves private research in a disposable copy',()=>{
+ const fixtureRoot=path.resolve('outputs/test-extraction-repair');fs.mkdirSync(fixtureRoot,{recursive:true});
+ const directory=fs.mkdtempSync(path.join(fixtureRoot,'fixture-')),database=path.join(directory,'invest.db');
+ const db=new DatabaseSync(database);db.exec(fs.readFileSync('data/schema.sql','utf8'));db.exec(fs.readFileSync('data/stories.sql','utf8'));
+ const body='央行利率政策发布了正式说明。政策效果取决于融资需求、通胀变化以及金融机构的实际传导，后续需要跟踪公开数据和新的政策发布。'.repeat(4);
+ db.prepare("INSERT INTO articles(id,title,url,source_type,source_tier,raw_text,published_at,fetched_at) VALUES(1,'央行利率政策说明','https://official.example/release','crawled','official',?,'2026-09-24','2026-09-25T00:00:00Z')").run(body);
+ db.prepare("INSERT INTO summaries(article_id,summary,generated_at) VALUES(1,'旧日期生成的摘要','2026-09-25T00:00:00Z')").run();
+ db.prepare("INSERT INTO article_judgments(article_id,content,generated_at) VALUES(1,'旧日期生成的判断','2026-09-25T00:00:00Z')").run();
+ db.prepare("INSERT INTO research_notes(article_id,note,created_at,updated_at) VALUES(1,'私有研究笔记保持完整','2026-09-25','2026-09-25')").run();
+ const row=db.prepare('SELECT * FROM articles WHERE id=1').get() as any;db.close();
+ const html='<title>央行利率政策说明</title><article><p>'+body+'</p></article>';
+ const stage={changes:[{id:1,title:row.title,publisher:'fixture',url:row.url,previousFingerprint:contentFingerprint(row),status:'correctable',reasons:[],bodyChars:body.length,originalPublishedAt:row.published_at,observedPublishedAt:'2026-09-25',rawText:body,rawHtml:html,bodyChanged:false}]};
+ const input=path.join(directory,'stage.json');fs.writeFileSync(input,JSON.stringify(stage));
+ const environment:NodeJS.ProcessEnv={...process.env,FINANCE_DISABLE_WORKER:'1'};delete environment.ZHIPU_API_KEY;delete environment.DEEPSEEK_API_KEY;
+ execFileSync(process.execPath,['--import','tsx','scripts/repair-extraction.ts','--db='+database,'--apply','--apply-report='+input,'--report='+path.join(directory,'result.json'),'--backup='+path.join(directory,'backup.db')],{env:environment,stdio:'pipe'});
+ const fixed=new DatabaseSync(database,{readOnly:true});
+ assert.equal(fixed.prepare('SELECT published_at FROM articles WHERE id=1').get()?.published_at,'2026-09-25');
+ assert.equal(fixed.prepare('SELECT count(*) n FROM summaries').get()?.n,0);
+ assert.equal(fixed.prepare('SELECT count(*) n FROM article_judgments').get()?.n,0);
+ assert.equal(fixed.prepare('SELECT count(*) n FROM generation_history').get()?.n,1);
+ assert.equal(fixed.prepare('SELECT note FROM research_notes WHERE article_id=1').get()?.note,'私有研究笔记保持完整');
+ const backup=new DatabaseSync(path.join(directory,'backup.db'),{readOnly:true});
+ assert.equal(backup.prepare('SELECT published_at FROM articles WHERE id=1').get()?.published_at,'2026-09-24');
+ fixed.close();backup.close();
+});

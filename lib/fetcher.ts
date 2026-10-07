@@ -123,6 +123,11 @@ export async function fetchRSS(url: string): Promise<
     },
   });
 
+  return parseRSS(xml);
+}
+
+export function parseRSS(xml:string){
+  if (typeof xml !== 'string' || !/<(?:rss|feed|rdf:RDF)\b/i.test(xml)) throw new Error('来源未返回有效 RSS/Atom，保留最近成功结果');
   const $ = cheerio.load(xml, { xmlMode: true });
 
   const items: Array<{
@@ -143,11 +148,13 @@ export async function fetchRSS(url: string): Promise<
       $(el).find('pubDate').first().text().trim() ||
       $(el).find('published').first().text().trim() ||
       $(el).find('updated').first().text().trim() ||
+      $(el).find('dc\\:date').first().text().trim() ||
       '';
     const description =
       $(el).find('description').first().text().trim() ||
       $(el).find('content\\:encoded').text().trim() ||
       $(el).find('content').text().trim() ||
+      $(el).find('summary').text().trim() ||
       '';
     // 真实作者：RSS 的 <author> 或 Atom 的 <dc:creator> / <name>
     const author =

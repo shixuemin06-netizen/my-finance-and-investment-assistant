@@ -1,35 +1,12 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Link from 'next/link';
 import AppShell from './AppShell';
-import type { DigestRow } from '@/lib/types';
+import DigestBody from './DigestBody';
+import { formatDate } from '@/lib/reader';
+import type { ArticleRow, SourcePulse, DigestRow } from '@/lib/types';
 
-export default function DailyDigest({ digest }: { digest: DigestRow }) {
-  return (
-    <AppShell active="today" eyebrow={`日报 · ${digest.date}`}>
-      <main className="reader-page">
-        <article className="reader-sheet">
-          <header className="reader-header">
-            <p className="section-label">DAILY DIGEST · {digest.date}</p>
-            <h1>{digest.title || '财经日报'}</h1>
-            {digest.one_liner && <p className="reader-deck">{digest.one_liner}</p>}
-            <div className="reader-meta">
-              <span>{digest.article_count ?? 0} 篇文章</span>
-              <span>生成于 {new Date(digest.generated_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span>
-            </div>
-          </header>
-          <div className="digest-content reader-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{digest.full_content_md || ''}</ReactMarkdown>
-          </div>
-        </article>
-        <aside className="reader-aside">
-          <div className="reader-aside-inner">
-            <p className="section-label">READING GUIDE</p>
-            <h2>阅读提示</h2>
-            <p>摘要帮助定位信息，原文链接才是事实依据。多空标签只表达文章方向，不构成投资建议。</p>
-            <a className="primary-button" href="/">返回今日简报</a>
-          </div>
-        </aside>
-      </main>
-    </AppShell>
-  );
+export default function DailyDigest({ digest }: { digest: DigestRow; pulse: SourcePulse; pending: ArticleRow[] }) {
+  return <AppShell active="daily" eyebrow={'日报 · ' + digest.date}><main className="reader-page">
+    <article className="reader-sheet daily-report-sheet"><header className="reader-header"><p className="section-label">财经日报 · {digest.date}</p><h1>{digest.title || '财经日报'}</h1><div className="reader-meta"><span>收录日期 {digest.date}</span><span>更新于 {formatDate(digest.generated_at, true)}</span><Link href={'/daily?date=' + digest.date}>切换日期</Link><Link href={'/share/' + digest.date}>分享摘要 ↗</Link></div></header><DigestBody digest={digest}/></article>
+    <aside className="reader-aside"><div className="reader-aside-inner"><h2>继续阅读</h2><Link className="text-link" href={'/search?date=' + digest.date}>检索本期材料 →</Link><Link className="text-link" href="/daily">日报归档 →</Link></div></aside>
+  </main></AppShell>;
 }

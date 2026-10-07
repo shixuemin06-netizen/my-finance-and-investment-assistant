@@ -19,7 +19,7 @@ test('beijingToday 返回 YYYY-MM-DD', () => {
 });
 
 // ===== 作者与平台区分 =====
-test('证据等级区分官方 / 多源 / 单一来源', () => {
+test('主题重合不能自动升级为独立佐证', () => {
   const articles: ArticleRow[] = [
     mkArticle(1, 'official', 1, '央行', '官方A'),
     mkArticle(2, 'media', 0, '证券时报', '媒体B'),
@@ -34,10 +34,21 @@ test('证据等级区分官方 / 多源 / 单一来源', () => {
   computeEvidenceLevels(articles, summaries);
 
   assert.equal(summaries.find((s) => s.article_id === 1)?.evidence_level, 'official');
-  assert.equal(summaries.find((s) => s.article_id === 2)?.evidence_level, 'multi_source'); // 与1同主题"降息"
+  assert.equal(summaries.find((s) => s.article_id === 2)?.evidence_level, 'single_source'); // 同主题不代表同一事实或独立来源
   assert.equal(summaries.find((s) => s.article_id === 3)?.evidence_level, 'single_source');
 });
 
+// 同一机构的多个 URL 不是“多源”。
+test('证据等级不把同一发布机构的不同链接当作多源', () => {
+  const articles: ArticleRow[] = [
+    mkArticle(1, 'media', 0, '同一家媒体', '编辑甲'),
+    mkArticle(2, 'media', 0, '同一家媒体', '编辑乙'),
+  ];
+  const summaries: SummaryRow[] = [mkSummary(1, '["房地产"]'), mkSummary(2, '["房地产"]')];
+  computeEvidenceLevels(articles, summaries);
+  assert.equal(summaries[0].evidence_level, 'single_source');
+  assert.equal(summaries[1].evidence_level, 'single_source');
+});
 // ===== 三件事选择 =====
 test('selectTopInsights 优先官方一手来源', () => {
   const articles: ArticleRow[] = [

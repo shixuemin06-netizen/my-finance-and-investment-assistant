@@ -1,13 +1,30 @@
+-- Local research notes are never included in model requests.
+CREATE TABLE IF NOT EXISTS research_notes (
+ article_id INTEGER PRIMARY KEY REFERENCES articles(id),
+ note TEXT NOT NULL DEFAULT '', horizon TEXT NOT NULL DEFAULT 'long',
+ saved INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
 -- 信源表（注：实际信源配置以 sources.json 为准，本表预留结构化信源元数据）
 CREATE TABLE IF NOT EXISTS sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_key TEXT UNIQUE,
     name TEXT NOT NULL,
     platform TEXT NOT NULL,           -- 'rss' | 'website' | 'wechat' | 'manual'
     config_json TEXT,
     priority INTEGER DEFAULT 2,
     enabled INTEGER DEFAULT 1,
+    source_tier TEXT DEFAULT 'media', -- 'official' | 'media' | 'community'
+    is_primary INTEGER DEFAULT 0,
+    authority_level INTEGER DEFAULT 2, -- 1=official primary, 2=professional media, 3=community lead
+    topic_scope TEXT,
+    last_run_at TEXT,
+    last_success_at TEXT,
+    last_status TEXT,
+    last_error TEXT,
+    last_count INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now','localtime'))
 );
+CREATE INDEX IF NOT EXISTS idx_sources_enabled ON sources(enabled);
 
 -- 文章表
 CREATE TABLE IF NOT EXISTS articles (
@@ -80,6 +97,61 @@ CREATE TABLE IF NOT EXISTS digests (
     generated_at TEXT DEFAULT (datetime('now','localtime'))
 );
 
+-- 事件与可核验主张：阅读层只展示三件事，研究层可回溯到具体材料。
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    digest_date TEXT NOT NULL,
+    event_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    topic TEXT,
+    editorial_status TEXT DEFAULT 'staged',
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    updated_at TEXT DEFAULT (datetime('now','localtime')),
+    UNIQUE(digest_date, event_key)
+);
+CREATE INDEX IF NOT EXISTS idx_events_digest ON events(digest_date);
+
+CREATE TABLE IF NOT EXISTS claims (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL REFERENCES events(id),
+    digest_date TEXT NOT NULL,
+    claim_text TEXT NOT NULL,
+    claim_type TEXT DEFAULT 'event',
+    concise_conclusion TEXT,
+    editorial_status TEXT DEFAULT 'staged',
+    evidence_level TEXT DEFAULT 'unverified',
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    updated_at TEXT DEFAULT (datetime('now','localtime')),
+    UNIQUE(event_id, claim_text)
+);
+CREATE INDEX IF NOT EXISTS idx_claims_digest ON claims(digest_date);
+CREATE INDEX IF NOT EXISTS idx_claims_status ON claims(editorial_status);
+
+CREATE TABLE IF NOT EXISTS claim_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    claim_id INTEGER NOT NULL REFERENCES claims(id),
+    article_id INTEGER NOT NULL REFERENCES articles(id),
+    evidence_role TEXT NOT NULL DEFAULT 'context',
+    quote_locator TEXT,
+    source_direction TEXT,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    UNIQUE(claim_id, article_id)
+);
+CREATE INDEX IF NOT EXISTS idx_claim_evidence_claim ON claim_evidence(claim_id);
+CREATE INDEX IF NOT EXISTS idx_claim_evidence_article ON claim_evidence(article_id);
+
+-- 首页三件事的冻结排序和编辑理由，避免渲染时临时重算。
+CREATE TABLE IF NOT EXISTS digest_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    digest_date TEXT NOT NULL,
+    claim_id INTEGER NOT NULL REFERENCES claims(id),
+    position INTEGER NOT NULL,
+    selection_reason TEXT,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    UNIQUE(digest_date, position),
+    UNIQUE(digest_date, claim_id)
+);
+CREATE INDEX IF NOT EXISTS idx_digest_items_digest ON digest_items(digest_date);
 -- 关键词趋势
 CREATE TABLE IF NOT EXISTS keywords_trend (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,3 +178,15 @@ CREATE TABLE IF NOT EXISTS job_runs (
     prompt_version TEXT,
     dataset_version TEXT
 );
+
+CREATE TABLE IF NOT EXISTS model_usage (id INTEGER PRIMARY KEY, day TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL, returned_model TEXT, input_tokens INTEGER DEFAULT 0, output_tokens INTEGER DEFAULT 0, estimated_cny REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_model_usage_day ON model_usage(day);
+CREATE TABLE IF NOT EXISTS article_judgments (article_id INTEGER PRIMARY KEY, content TEXT NOT NULL, generated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS summary_failures (article_id INTEGER PRIMARY KEY, status TEXT NOT NULL, retry_after TEXT NOT NULL);
+
+-- Internal audit and generation history. Never selected into public exports.
+CREATE TABLE IF NOT EXISTS generation_basis(article_id INTEGER PRIMARY KEY,source_fingerprint TEXT NOT NULL,model TEXT,prompt_version TEXT,generated_at TEXT,basis_kind TEXT DEFAULT 'generated');
+CREATE TABLE IF NOT EXISTS generation_history(id INTEGER PRIMARY KEY,article_id INTEGER,source_fingerprint TEXT,summary TEXT,judgment TEXT,title_zh TEXT,reason TEXT,archived_at TEXT);
+CREATE TABLE IF NOT EXISTS quality_review(article_id INTEGER PRIMARY KEY,status TEXT NOT NULL,reasons TEXT NOT NULL,source_fingerprint TEXT,checked_at TEXT NOT NULL,rule_version TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS content_extractions(article_id INTEGER PRIMARY KEY,source_url TEXT,page_title TEXT,page_type TEXT,selector TEXT,body_chars INTEGER,paragraph_count INTEGER,link_density REAL,title_coverage REAL,extracted_at TEXT,rule_version TEXT);
+CREATE TABLE IF NOT EXISTS public_event_links(article_id INTEGER PRIMARY KEY,event_id TEXT NOT NULL,association_status TEXT NOT NULL,basis TEXT NOT NULL,checked_at TEXT NOT NULL);

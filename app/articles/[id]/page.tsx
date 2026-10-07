@@ -1,0 +1,10 @@
+import Link from 'next/link';
+import {notFound} from 'next/navigation';
+import AppShell from '@/components/AppShell';
+import ResearchNote from '@/components/ResearchNote';
+import {getArticle,formatDate,externalUrl} from '@/lib/reader';
+export const dynamic='force-dynamic';
+export default async function Page({params}:{params:Promise<{id:string}>}){
+ const {id}=await params;if(!/^\d+$/.test(id))notFound();const a=getArticle(Number(id));if(!a)notFound();
+ return <AppShell active="search"><main className="reading-layout"><article className="reading-main"><p className="breadcrumb"><Link href={a.story_id?'/stories/'+a.story_id:'/search'}>← {a.story_id?'返回事件':'返回资料库'}</Link></p><header className="article-heading"><p className="eyebrow">文章阅读 · {a.source_tier==='official'&&a.is_primary?'官方发布':'来源材料'}</p><h1>{a.title_zh||a.title}</h1>{a.title_zh&&<p className="original-title">机器翻译 · 原标题：{a.title}</p>}<div className="story-meta"><span>{a.publisher||a.author||'来源待补'}</span><span>{a.published_at?'发布 '+formatDate(a.published_at,true):'发布日期待核'}</span><span>收录 {formatDate(a.fetched_at,true)}</span></div></header>{a.summary&&<section className="reading-section"><h2>模型摘要</h2><p>{a.summary}</p><small>未经人工核验，请对照下方原文。</small></section>}<section className="reading-section"><h2>已保存的原始材料</h2><p className="quiet-copy">订阅源可能只提供节选；完整正文、附件与后续修正以发布机构网站为准。</p><div className="raw-text">{a.raw_text||'当前仅保存标题和链接，请打开原始发布。'}</div></section><a className="secondary-button" href={externalUrl(a.url)} target="_blank" rel="noreferrer">打开原始发布 ↗</a></article><aside className="reading-aside"><section><h2>来源信息</h2><p className="quiet-copy">{a.publisher||'来源待补'}</p><a href={externalUrl(a.url)} target="_blank" rel="noreferrer" className="text-link">前往原文核对 ↗</a></section><section><h2>我的文章笔记</h2>{a.note&&<blockquote className="saved-note">{a.note}</blockquote>}<ResearchNote articleId={a.id} initialSaved={Boolean(a.saved)} initialNote={a.note||''} initialHorizon={a.horizon||'long'}/></section>{a.story_id&&<Link href={'/stories/'+a.story_id} className="text-link">查看事件与后续进展 →</Link>}</aside></main></AppShell>;
+}

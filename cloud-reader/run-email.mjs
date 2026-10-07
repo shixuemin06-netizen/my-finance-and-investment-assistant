@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { build } from 'esbuild';
+fs.mkdirSync('.sites-runtime', { recursive: true });
+const outfile = path.resolve('.sites-runtime/digest-email.mjs');
+await build({ entryPoints: ['lib/digest-email.ts'], outfile, bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external' });
+const { renderDigestEmail, emailBusinessDate } = await import(pathToFileURL(outfile).href);
+const edition = JSON.parse(fs.readFileSync('public/assets/edition-seed.json', 'utf8'));
+console.log(JSON.stringify(renderDigestEmail(edition, { businessDate: emailBusinessDate(), siteUrl: 'https://finance-research-shi.shixuemin06.chatgpt.site' })));

@@ -1,8 +1,5 @@
-/**
- * 流水线运行记录（job_runs）。
- * 记录每个信源成败、各阶段耗时、本期新增/跳过/失败、模型与版本号。
- */
-import { readTable, writeTable } from './db';
+/** Durable, incremental pipeline run records. */
+import db from './db';
 import type { JobRunRow } from './types';
 
 export interface StageTimings {
@@ -20,35 +17,40 @@ export interface SourceResult {
   error?: string;
 }
 
-const MODEL = 'deepseek-chat';
-const PROMPT_VERSION = 'v1';
-const DATASET_VERSION = 'v1';
+import { modelConfig } from './model-config';
+const PROMPT_VERSION = 'v2-evidence-contract';
+const DATASET_VERSION = 'v2-frozen-digest';
+const STALE_RUN_MS = 3 * 60 * 60 * 1000;
 
-/** 开始一次运行，返回 runId */
+/** Start one run and fail fast if a fresh run already owns the local pipeline. */
 export function startJob(runType: JobRunRow['run_type']): number {
-  const rows = readTable('job_runs') as JobRunRow[];
-  const id = rows.length + 1;
-  rows.push({
-    id,
-    started_at: new Date().toISOString(),
-    finished_at: null,
-    run_type: runType,
-    status: 'running',
-    source_results: null,
-    stage_timings: null,
-    new_count: 0,
-    skipped_count: 0,
-    failed_count: 0,
-    pending_verify_count: 0,
-    model: MODEL,
-    prompt_version: PROMPT_VERSION,
-    dataset_version: DATASET_VERSION,
+  return db.transaction(() => {
+  const now = new Date();
+  for(const job of db.prepare("SELECT id,owner_pid FROM job_runs WHERE status='running' AND owner_pid IS NOT NULL").all()){
+    try{process.kill(Number(job.owner_pid),0);}catch(e){if((e as NodeJS.ErrnoException).code==='ESRCH')db.prepare("UPDATE job_runs SET status='failed',finished_at=? WHERE id=?").run(now.toISOString(),job.id);}
+  }
+  const staleBefore = new Date(now.getTime() - STALE_RUN_MS).toISOString();
+  db.prepare(`
+    UPDATE job_runs
+    SET status = 'failed', finished_at = ?, source_results = COALESCE(source_results, '[]')
+    WHERE status = 'running' AND started_at < ?
+  `).run(now.toISOString(), staleBefore);
+
+  const running = db.prepare("SELECT id FROM job_runs WHERE status = 'running' ORDER BY id DESC LIMIT 1").get();
+  if (running) throw new Error(`已有运行中的流水线（runId=${running.id}），请等待或确认其状态`);
+
+  const result = db.prepare(`
+    INSERT INTO job_runs (
+      started_at, run_type, status, source_results, stage_timings,
+      new_count, skipped_count, failed_count, pending_verify_count,
+      model, prompt_version, dataset_version
+    ) VALUES (?, ?, 'running', NULL, NULL, 0, 0, 0, 0, ?, ?, ?)
+  `).run(now.toISOString(), runType, modelConfig().model, PROMPT_VERSION, DATASET_VERSION);
+  db.prepare('UPDATE job_runs SET owner_pid=? WHERE id=?').run(process.pid,Number(result.lastInsertRowid));
+  return Number(result.lastInsertRowid);
   });
-  writeTable('job_runs', rows);
-  return id;
 }
 
-/** 结束一次运行，写最终状态 */
 export function finishJob(
   runId: number,
   opts: {
@@ -59,26 +61,26 @@ export function finishJob(
     skippedCount: number;
     failedCount: number;
     pendingVerifyCount?: number;
-  }
+  },
 ): void {
-  const rows = readTable('job_runs') as JobRunRow[];
-  const job = rows.find((r) => r.id === runId);
-  if (!job) return;
-
-  job.finished_at = new Date().toISOString();
-  job.status = opts.status;
-  job.source_results = JSON.stringify(opts.sourceResults);
-  job.stage_timings = JSON.stringify(opts.stageTimings);
-  job.new_count = opts.newCount;
-  job.skipped_count = opts.skippedCount;
-  job.failed_count = opts.failedCount;
-  job.pending_verify_count = opts.pendingVerifyCount ?? 0;
-  writeTable('job_runs', rows);
+  db.prepare(`
+    UPDATE job_runs
+    SET finished_at = ?, status = ?, source_results = ?, stage_timings = ?,
+        new_count = ?, skipped_count = ?, failed_count = ?, pending_verify_count = ?
+    WHERE id = ?
+  `).run(
+    new Date().toISOString(),
+    opts.status,
+    JSON.stringify(opts.sourceResults),
+    JSON.stringify(opts.stageTimings),
+    opts.newCount,
+    opts.skippedCount,
+    opts.failedCount,
+    opts.pendingVerifyCount ?? 0,
+    runId,
+  );
 }
 
-/** 最新一次运行（供 UI 状态行使用） */
 export function latestJob(): JobRunRow | undefined {
-  const rows = readTable('job_runs') as JobRunRow[];
-  if (rows.length === 0) return undefined;
-  return rows.reduce((a, b) => (a.id > b.id ? a : b));
+  return db.prepare('SELECT * FROM job_runs ORDER BY id DESC LIMIT 1').get() as JobRunRow | undefined;
 }

@@ -1,0 +1,18 @@
+import Link from 'next/link';
+import {notFound} from 'next/navigation';
+import AppShell from '@/components/AppShell';
+import StoryActions from '@/components/StoryActions';
+import {getStory,getStoryReports,regions,selectionReason} from '@/lib/stories';
+import {formatDate,readJudgment,storyUpdates,externalUrl} from '@/lib/reader';
+export const dynamic='force-dynamic';
+export default async function Page({params}:{params:Promise<{id:string}>}){
+ const {id}=await params,s=getStory(id);if(!s)notFound();const reports=getStoryReports(id),rep=reports.find(a=>a.id===s.representative_article_id)||reports[0],j=readJudgment(rep?.judgment),updates=storyUpdates(id);
+ return <AppShell active={s.sector==='macro'?'macro':'industry'}><main className="reading-layout"><article className="reading-main"><p className="breadcrumb"><Link href={s.sector==='macro'?'/macro':'/industry'}>← 返回事件列表</Link></p><header className="article-heading"><p className="eyebrow">{regions[s.region as keyof typeof regions]} · 持续事件</p><h1>{s.title}</h1>{s.title_zh&&<p className="original-title">机器翻译 · 原标题：{rep?.title}</p>}<div className="story-meta"><span>{s.published_at?'首次发布 '+formatDate(s.first_at):'发布日期待核'}</span><span>最近材料 {formatDate(s.latest_at)}</span><span>{s.report_count} 篇关联材料</span></div>{Boolean(s.followed&&s.unread)&&<p className="notice">{s.last_read_update?'上次阅读之后有 '+s.unread+' 条新进展。':'这个事件尚未标记已读。'}</p>}</header>
+ <nav className="filter-tabs" aria-label="事件页目录"><a href="#facts">发生了什么</a><a href="#transmission">传导与反证</a><a href="#timeline">后续报道</a><a href="#sources">原始依据</a></nav>
+ <section className="reading-section" id="facts"><h2>发生了什么</h2><p className="quiet-copy">{s.summary?'以下为模型对来源陈述的概括':'来源标题，尚无可用摘要'}</p><p>{s.summary||rep?.title||s.title}</p><Link href={'/articles/'+s.representative_article_id} className="text-link">核对已保存原文 →</Link></section>
+ <section className="reading-section" id="transmission"><h2>可能如何传导</h2>{j?<><p className="quiet-copy">模型解读 · 条件性判断，未经人工核验</p><h3>{j.thesis}</h3><p>{j.mechanism}</p></>:<p className="quiet-copy">暂无可靠的模型解读。原始材料可直接阅读；模型恢复后新增结果会成为事件进展。</p>}</section>
+ <section className="reading-section"><h2>适用条件与反证</h2>{j?<><p>{j.counterpoint}</p><h3>下一步核查</h3><p>{j.watch}</p>{j.evidence&&<blockquote><b>模型所引用的原文片段</b>{j.evidence}</blockquote>}</>:<p className="quiet-copy">尚未形成有依据的条件分析。阅读时先核对发布范围、统计期间与口径，再记录自己的待验证问题。</p>}</section>
+ <section className="reading-section" id="timeline"><h2>后续报道与更新</h2><div className="timeline">{updates.map(u=><div className="timeline-item" key={u.id}><time>{formatDate(u.created_at,true)} · {u.kind==='summary'?'摘要更新':'加入材料'}</time><p><Link href={'/articles/'+u.article_id}>{u.title}</Link></p><small>{u.publisher||'来源待补'}</small></div>)}</div></section>
+ <section className="reading-section" id="sources"><h2>原始依据</h2><p className="quiet-copy">相关报道不等于独立证据，多家转载不会自动升级可信度。</p>{reports.map(a=><article key={a.id} className="source-row"><small>{a.source_tier==='official'&&a.is_primary?'官方原始发布':'来源报道'} · {a.publisher||'来源待补'} · {a.published_at?formatDate(a.published_at):'发布日期待核'}</small><h3><Link href={'/articles/'+a.id}>{a.title_zh||a.title}</Link></h3><a href={externalUrl(a.url)} target="_blank" rel="noreferrer" className="text-link">打开原始来源 ↗</a></article>)}</section></article>
+ <aside className="reading-aside"><section><h2>跟踪这个变化</h2><p className="quiet-copy">{selectionReason(s)}</p><StoryActions key={s.id} id={s.id} followed={Boolean(s.followed)} saved={Boolean(s.saved)} note={s.note} revision={s.revision} full/></section><section><p className="quiet-copy">关注后，新报道与摘要更新会出现在“我的研究”。取消收藏不删除笔记。</p><Link href="/research" className="text-link">打开我的研究 →</Link></section></aside></main></AppShell>;
+}

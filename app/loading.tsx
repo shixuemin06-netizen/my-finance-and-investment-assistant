@@ -1,0 +1,1 @@
+export default function Loading(){return <main className="page-loading" aria-busy="true"><p role="status">正在打开阅读空间…</p><div className="skeleton"/><div className="skeleton"/><div className="skeleton"/></main>;}

@@ -1,0 +1,1 @@
+import Link from 'next/link';import AppShell from '@/components/AppShell';export default function NotFound(){return <AppShell><main className="single-page"><h1>没有找到这条内容</h1><p>链接可能无效，或材料尚未收录。</p><Link className="text-link" href="/search">到资料库查找 →</Link></main></AppShell>;}

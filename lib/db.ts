@@ -1,33 +1,27 @@
 /**
- * SQLite 数据库 —— 基于 Node 内置 node:sqlite（Node >= 22.5，本项目运行在 24.x）
+ * SQLite data access layer (Node 24 node:sqlite).
  *
- * 优点：零原生依赖、Windows 免编译、事务保证崩溃不损坏（替代旧 JSON 整文件覆盖）。
- *
- * 对外保留两套接口，pipeline / 页面零改动：
- *   - readTable(table) / writeTable(table, rows)：整表读 / 整表覆盖写
- *   - db.prepare(sql).all() / .get() / .run()：标准 SQLite 语句（与 better-sqlite3 同名）
- *
- * 数据文件：data/invest.db（WAL 模式，多进程读写安全）。
+ * Legacy whole-table helpers remain temporarily for old routes, but the live
+ * pipeline uses transaction/upsert so a failed run cannot erase history.
  */
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
 import path from 'path';
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const DATA_DIR = process.env.FINANCE_DATA_DIR ? path.resolve(process.env.FINANCE_DATA_DIR) : path.resolve(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'invest.db');
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const rawDb = new DatabaseSync(DB_PATH);
 rawDb.exec('PRAGMA journal_mode = WAL;');
 rawDb.exec('PRAGMA busy_timeout = 5000;');
-// 应用在 JS 侧维护 id 关联（旧 JSON 库无外键概念），关闭 SQLite 外键约束，
-// 使 writeTable 的「DELETE + 重插」语义与旧版一致。
+// Historic JSON imports have dangling relationships. New writes keep order,
+// while this compatibility setting prevents existing local data from failing to open.
 rawDb.exec('PRAGMA foreign_keys = OFF;');
 
-// ===== 表结构 =====
+type PlainRow = Record<string, any>;
+type RunResult = { changes: number; lastInsertRowid: number | bigint };
 
 function tableExists(table: string): boolean {
   const row = rawDb
@@ -37,74 +31,116 @@ function tableExists(table: string): boolean {
 }
 
 function getColumns(table: string): string[] {
-  const rows = rawDb.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
-  return rows.map((r) => r.name);
+  if (!tableExists(table)) return [];
+  return (rawDb.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((row) => row.name);
+}
+
+/** Add only missing source columns so existing SQLite files stay intact. */
+function migrateExistingSchema(): void {
+  if(tableExists('job_runs')&&!getColumns('job_runs').includes('owner_pid'))rawDb.exec('ALTER TABLE job_runs ADD COLUMN owner_pid INTEGER');
+  if (!tableExists('sources')) return;
+  const existing = new Set(getColumns('sources'));
+  const additions: Array<[string, string]> = [
+    ['source_key', 'TEXT'],
+    ['source_tier', "TEXT DEFAULT 'media'"],
+    ['is_primary', 'INTEGER DEFAULT 0'],
+    ['authority_level', 'INTEGER DEFAULT 2'],
+    ['topic_scope', 'TEXT'],
+    ['last_run_at', 'TEXT'],
+    ['last_success_at', 'TEXT'],
+    ['last_status', 'TEXT'],
+    ['last_error', 'TEXT'],
+    ['last_count', 'INTEGER DEFAULT 0'],
+  ];
+
+  for (const [column, definition] of additions) {
+    if (!existing.has(column)) rawDb.exec(`ALTER TABLE sources ADD COLUMN ${column} ${definition}`);
+  }
+  rawDb.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sources_source_key ON sources(source_key)');
 }
 
 function initDatabase(): void {
   const schemaPath = path.resolve(process.cwd(), 'data', 'schema.sql');
-  if (fs.existsSync(schemaPath)) {
-    const schema = fs.readFileSync(schemaPath, 'utf-8');
-    rawDb.exec(schema);
-  }
+  if (fs.existsSync(schemaPath)) rawDb.exec(fs.readFileSync(schemaPath, 'utf-8'));
+  migrateExistingSchema();
+  const continuousSchema=path.resolve(process.cwd(),'data','stories.sql');
+  if(fs.existsSync(continuousSchema)) rawDb.exec(fs.readFileSync(continuousSchema,'utf8'));
 }
 
-// ===== 数据读写 =====
+/** node:sqlite returns null-prototype rows; Client Components need plain objects. */
+function toPlainRows(rows: unknown[]): PlainRow[] {
+  return rows.map((row) => ({ ...(row as PlainRow) }));
+}
 
-function readTable(table: string): Record<string, any>[] {
+function readTable(table: string): PlainRow[] {
   if (!tableExists(table)) return [];
-  return toPlainRows(rawDb.prepare(`SELECT * FROM ${table} ORDER BY id`).all());
-}
-
-/** node:sqlite 返回 null 原型对象，转成普通对象（否则无法传给 Client Component） */
-function toPlainRows(rows: unknown[]): Record<string, any>[] {
-  return rows.map((r) => ({ ...(r as Record<string, any>) }));
+  return toPlainRows(rawDb.prepare(`SELECT * FROM ${table} ORDER BY id`).all() as unknown[]);
 }
 
 /**
- * 整表覆盖写：事务内 DELETE + 批量 INSERT。
- * 行对象含什么键就写什么列（键名须与表列一致），其余列落到 schema 默认值。
+ * Compatibility-only whole-table replacement. Do not use this in the live
+ * crawler/summarizer path; new code should use transaction + upsert.
  */
-function writeTable(table: string, rows: Record<string, any>[]): void {
-  if (!tableExists(table)) {
-    initDatabase();
-  }
-  const cols = getColumns(table);
-  if (cols.length === 0) return;
+function writeTable(table: string, rows: PlainRow[]): void {
+  if (!tableExists(table)) initDatabase();
+  const columns = getColumns(table);
+  if (!columns.length) return;
 
-  const insertSql = `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`;
-  const insert = rawDb.prepare(insertSql);
+  const insert = rawDb.prepare(
+    `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+  );
   const del = rawDb.prepare(`DELETE FROM ${table}`);
 
-  rawDb.exec('BEGIN');
-  try {
+  transaction(() => {
     del.run();
-    for (const row of rows) {
-      insert.run(...cols.map((c) => row[c] ?? null));
-    }
+    for (const row of rows) insert.run(...columns.map((column) => row[column] ?? null));
+  });
+}
+
+function transaction<T>(fn: () => T): T {
+  rawDb.exec('BEGIN IMMEDIATE');
+  try {
+    const result = fn();
     rawDb.exec('COMMIT');
-  } catch (e) {
+    return result;
+  } catch (error) {
     rawDb.exec('ROLLBACK');
-    throw e;
+    throw error;
   }
 }
 
-// ===== 公共 API（模仿 better-sqlite3） =====
+/**
+ * Controlled incremental upsert. Columns are intersected with the real schema
+ * before composing SQL, so callers cannot inject SQL identifiers through data.
+ */
+function upsert(table: string, row: PlainRow, conflictColumns: string[], updateColumns?: string[]): RunResult {
+  if (!tableExists(table)) initDatabase();
+  const allowed = new Set(getColumns(table));
+  const columns = Object.keys(row).filter((column) => allowed.has(column));
+  if (!columns.length) throw new Error(`没有可写入 ${table} 的列`);
+  if (conflictColumns.some((column) => !allowed.has(column))) throw new Error(`无效冲突列：${table}`);
 
-type RunResult = { changes: number; lastInsertRowid: number | bigint };
+  const updates = (updateColumns ?? columns.filter((column) => !conflictColumns.includes(column)))
+    .filter((column) => allowed.has(column) && !conflictColumns.includes(column));
+  const action = updates.length
+    ? `UPDATE SET ${updates.map((column) => `${column}=excluded.${column}`).join(', ')}`
+    : 'NOTHING';
+  const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')}) ON CONFLICT(${conflictColumns.join(', ')}) DO ${action}`;
+  return rawDb.prepare(sql).run(...columns.map((column) => row[column] ?? null)) as unknown as RunResult;
+}
 
 function prepare(sql: string) {
-  const stmt = rawDb.prepare(sql);
+  const statement = rawDb.prepare(sql);
   return {
-    all(...params: any[]): Record<string, any>[] {
-      return toPlainRows(stmt.all(...params) as unknown as unknown[]);
+    all(...params: any[]): PlainRow[] {
+      return toPlainRows(statement.all(...params) as unknown as unknown[]);
     },
-    get(...params: any[]): Record<string, any> | undefined {
-      const row = stmt.get(...params);
-      return row == null ? undefined : ({ ...(row as Record<string, any>) } as Record<string, any>);
+    get(...params: any[]): PlainRow | undefined {
+      const row = statement.get(...params);
+      return row == null ? undefined : { ...(row as PlainRow) };
     },
     run(...params: any[]): RunResult {
-      return stmt.run(...params) as unknown as RunResult;
+      return statement.run(...params) as unknown as RunResult;
     },
     bind(...params: any[]) {
       return prepareBound(sql, params);
@@ -113,22 +149,22 @@ function prepare(sql: string) {
 }
 
 function prepareBound(sql: string, binds: any[]) {
-  const stmt = rawDb.prepare(sql);
+  const statement = rawDb.prepare(sql);
   return {
-    all(): Record<string, any>[] {
-      return toPlainRows(stmt.all(...binds) as unknown as unknown[]);
+    all(): PlainRow[] {
+      return toPlainRows(statement.all(...binds) as unknown as unknown[]);
     },
-    get(): Record<string, any> | undefined {
-      const row = stmt.get(...binds);
-      return row == null ? undefined : ({ ...(row as Record<string, any>) } as Record<string, any>);
+    get(): PlainRow | undefined {
+      const row = statement.get(...binds);
+      return row == null ? undefined : { ...(row as PlainRow) };
     },
     run(): RunResult {
-      return stmt.run(...binds) as unknown as RunResult;
+      return statement.run(...binds) as unknown as RunResult;
     },
   };
 }
 
-/** 在线备份到 data/backups/invest-<日期>.db（安全：不阻塞读写） */
+/** Online SQLite snapshot. Caller should choose a dated name for auditability. */
 function backup(destPath?: string): void {
   const backupDir = path.join(DATA_DIR, 'backups');
   if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
@@ -137,7 +173,6 @@ function backup(destPath?: string): void {
   rawDb.exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
 }
 
-// ===== 初始化 =====
 initDatabase();
 
 const db = {
@@ -146,6 +181,8 @@ const db = {
     rawDb.exec(sql);
   },
   backup,
+  transaction,
+  upsert,
 };
 
 export default db;

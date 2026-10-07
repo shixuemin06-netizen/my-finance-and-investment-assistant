@@ -1,67 +1,37 @@
-/**
- * 每日横向比较：读当天所有 summaries → 合并调 DeepSeek → 写 divergence 表
- */
-import db, { readTable, writeTable } from '../lib/db';
+/** Generate one scoped consensus/divergence note for a frozen Beijing-date bucket. */
+import db from '../lib/db';
 import { compareDaily } from '../lib/llm';
 import { beijingToday } from '../lib/time';
-import type { ArticleRow, SummaryRow, DivergenceRow } from '../lib/types';
 
 export async function analyzeDaily(
   date?: string,
-  bucketField: 'fetched_at' | 'published_at' = 'fetched_at'
+  bucketField: 'fetched_at' | 'published_at' = 'fetched_at',
 ): Promise<void> {
   const today = date || beijingToday();
+  const joined = db.prepare(`
+    SELECT s.*, a.author, a.publisher, a.title, a.url
+    FROM summaries s JOIN articles a ON a.id = s.article_id
+    WHERE substr(a.${bucketField}, 1, 10) = ?
+    ORDER BY a.id ASC
+  `).all(today) as Array<Record<string, any>>;
 
-  // JS 侧 JOIN：读 articles + summaries
-  const articles = readTable('articles') as ArticleRow[];
-  const summaries = readTable('summaries') as SummaryRow[];
-
-  // 严格按归桶字段筛选「本期」文章（不再用 generated_at 回退，避免旧文章算入今日）
-  const recentArticles = articles.filter((a) => {
-    const d1 = (a[bucketField] || '').slice(0, 10);
-    return d1 === today;
-  });
-
-  const recentIds = new Set(recentArticles.map((a) => a.id));
-  const todaySummaries = summaries.filter((s) => recentIds.has(s.article_id));
-
-  // 关联文章信息
-  const joined = todaySummaries.map((s) => {
-    const a = articles.find((a) => a.id === s.article_id);
-    return { ...s, author: a?.author || null, title: a?.title || '', url: a?.url || '' };
-  });
-
-  if (joined.length === 0) {
+  if (!joined.length) {
+    db.prepare('DELETE FROM divergence WHERE digest_date = ?').run(today);
     console.log('[分析] 今天没有摘要，跳过横向比较');
     return;
   }
-
   console.log(`[分析] 共 ${joined.length} 条摘要，准备横向比较...`);
-
-  const summariesText = joined
-    .map(
-      (r, i) =>
-        `${i + 1}. 【${r.author || '未知'}】${r.title}\n   摘要：${r.summary}\n   标签：${r.tags || '无'} | 倾向：${r.stance || 'neutral'}`
-    )
-    .join('\n\n');
-
+  const summariesText = joined.map((row, index) =>
+    `${index + 1}. 【${row.author || row.publisher || '未知发布机构'}】${row.title}\n   摘要：${row.summary}\n   标签：${row.tags || '无'} | 倾向：${row.stance || 'neutral'}`,
+  ).join('\n\n');
   const markdown = await compareDaily(summariesText);
 
-  // 写入 divergence
-  const divergences = readTable('divergence') as DivergenceRow[];
-  // 删旧
-  const filtered = divergences.filter((d) => d.digest_date !== today);
-
-  filtered.push({
-    id: divergences.length + 1,
-    digest_date: today,
-    topic: '今日分析',
-    bullish_authors: JSON.stringify([]),
-    bearish_authors: JSON.stringify([]),
-    summary_md: markdown,
-    created_at: new Date().toISOString(),
+  db.transaction(() => {
+    db.prepare('DELETE FROM divergence WHERE digest_date = ?').run(today);
+    db.prepare(`
+      INSERT INTO divergence (digest_date, topic, bullish_authors, bearish_authors, summary_md, created_at)
+      VALUES (?, '今日分析', '[]', '[]', ?, ?)
+    `).run(today, markdown, new Date().toISOString());
   });
-
-  writeTable('divergence', filtered);
-  console.log(`[分析] ✅ 已写入分析结果`);
+  console.log('[分析] 已写入分析结果');
 }

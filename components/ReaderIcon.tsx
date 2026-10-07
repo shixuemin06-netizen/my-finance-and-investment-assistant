@@ -1,0 +1,4 @@
+export default function ReaderIcon({name,size=19}:{name:string;size?:number}){
+ const paths:Record<string,string>={home:'m3 10 9-7 9 7v10H3V10m6 10v-7h6v7',macro:'M3 3v18h18M6 15l4-5 4 3 6-8',industry:'M3 21V9l6 3V7l6 3V3h6v18H3m3-5h2m3 0h2m3 0h2',daily:'M5 3h14v18H5V3m4 5h6m-6 4h6m-6 4h6',research:'M5 3h14v18l-7-4-7 4V3',search:'m16 16 5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',plus:'M12 4v16M4 12h16',arrow:'M5 12h14m-6-6 6 6-6 6',globe:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M3 12h18M12 3a18 18 0 0 0 0 18 18 18 0 0 0 0-18',settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2',more:'M4 6h16M4 12h16M4 18h16'};
+ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]||paths.research}/></svg>;
+}

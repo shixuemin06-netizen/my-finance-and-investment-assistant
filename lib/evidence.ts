@@ -1,74 +1,90 @@
 /**
- * 证据等级计算：把「证据等级」与「模型解析置信度」分开。
- *  - confidence（summaries.confidence）= 模型解析置信度：模型是否确定自己理解了文章。
- *  - evidence_level（summaries.evidence_level）= 证据等级：内容是否经过官方材料或多个独立来源支持。
- *
- * 计算规则（对某期日报的文章集合）：
- *  - official：来源为官方一手（source_tier === 'official' 且 is_primary）
- *  - multi_source：同一主题（tags 有交集）有 ≥ 2 个不同来源（publisher/author 不同）同向
- *  - single_source：只有一个来源
- *  - unverified：无摘要或无法判断
+ * Evidence grade is deliberately separate from model confidence:
+ * - confidence answers whether the parser understood a text;
+ * - evidence_level answers whether this claim has an official primary source or
+ *   a known source; topic overlap never establishes independent corroboration.
  */
+import db from './db';
 import type { ArticleRow, EvidenceLevel, SummaryRow } from './types';
 
-function safeTags(s: string | null): string[] {
-  if (!s) return [];
+export function safeTags(value: string | null): string[] {
+  if (!value) return [];
   try {
-    const t = JSON.parse(s);
-    return Array.isArray(t) ? t : [];
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.map((tag) => String(tag).trim()).filter(Boolean)
+      : [];
   } catch {
     return [];
   }
 }
 
-export function computeEvidenceLevels(
-  articles: ArticleRow[],
-  summaries: SummaryRow[]
-): void {
-  const articleById = new Map(articles.map((a) => [a.id, a]));
-  const summaryByArticle = new Map(summaries.map((s) => [s.article_id, s]));
+function sourceIdentity(article: ArticleRow): string | null {
+  const value = article.publisher || article.author;
+  return value ? value.trim().toLocaleLowerCase('zh-CN') : null;
+}
 
-  // 预分组：按 tag 收集（同主题的文章 id 列表）
-  const tagToArticles = new Map<string, number[]>();
-  for (const s of summaries) {
-    for (const tag of safeTags(s.tags)) {
-      const list = tagToArticles.get(tag) || [];
-      list.push(s.article_id);
-      tagToArticles.set(tag, list);
-    }
-  }
+function groupKey(tag: string, stance: SummaryRow['stance']): string {
+  return `${tag.trim().toLocaleLowerCase('zh-CN')}::${stance || 'neutral'}`;
+}
 
-  for (const s of summaries) {
-    const a = articleById.get(s.article_id);
-    if (!a) {
-      s.evidence_level = 'unverified';
-      continue;
-    }
-
-    // 官方一手来源 → official
-    if (a.source_tier === 'official' && a.is_primary === 1) {
-      s.evidence_level = 'official';
-      continue;
-    }
-
-    // 多来源：同一主题下 ≥2 个不同来源
-    const tags = safeTags(s.tags);
-    const sources = new Set<string>();
-    for (const tag of tags) {
-      const related = tagToArticles.get(tag) || [];
-      for (const id of related) {
-        const rel = articleById.get(id);
-        const key = rel?.canonical_url || rel?.url || rel?.publisher || rel?.author || String(id);
-        sources.add(key);
-      }
-    }
-    s.evidence_level = sources.size >= 2 ? 'multi_source' : 'single_source';
+/** Pure function for tests and for materializing a frozen daily set. */
+export function computeEvidenceLevels(articles: ArticleRow[], summaries: SummaryRow[]): void {
+  const byId = new Map(articles.map(article => [article.id, article]));
+  for (const summary of summaries) {
+    const article = byId.get(summary.article_id);
+    // Topic overlap does not establish corroboration of a concrete claim.
+    summary.evidence_level = !article ? 'unverified'
+      : article.source_tier === 'official' && article.is_primary === 1 ? 'official'
+      : sourceIdentity(article) ? 'single_source' : 'unverified';
   }
 }
 
-export const evidenceLabel: Record<EvidenceLevel, string> = {
-  official: '官方',
-  multi_source: '多源',
-  single_source: '单一来源',
-  unverified: '待核验',
-};
+/** Persist grades for a supplied frozen article set; returns the real pending count. */
+export function persistEvidenceLevels(articleIds?: number[]): number {
+  const where = articleIds?.length ? `WHERE s.article_id IN (${articleIds.map(() => '?').join(', ')})` : '';
+  const rows = db.prepare(`
+    SELECT a.*, s.id AS summary_id, s.article_id, s.summary, s.tags, s.stance,
+           s.confidence, s.evidence_level, s.generated_at
+    FROM summaries s JOIN articles a ON a.id = s.article_id
+    ${where}
+  `).all(...(articleIds || [])) as Array<ArticleRow & SummaryRow & { summary_id: number }>;
+
+  const articles: ArticleRow[] = rows.map((row) => ({
+    id: row.id,
+    source_id: row.source_id,
+    publisher: row.publisher,
+    author: row.author,
+    title: row.title,
+    url: row.url,
+    canonical_url: row.canonical_url,
+    source_tier: row.source_tier,
+    is_primary: row.is_primary,
+    raw_text: row.raw_text,
+    raw_html: row.raw_html,
+    content_hash: row.content_hash,
+    published_at: row.published_at,
+    fetched_at: row.fetched_at,
+    digest_date: row.digest_date,
+    source_type: row.source_type,
+  }));
+  const summaries: SummaryRow[] = rows.map((row) => ({
+    id: row.summary_id,
+    article_id: row.article_id,
+    summary: row.summary,
+    tags: row.tags,
+    stance: row.stance,
+    confidence: row.confidence,
+    evidence_level: row.evidence_level,
+    generated_at: row.generated_at,
+  }));
+
+  computeEvidenceLevels(articles, summaries);
+  db.transaction(() => {
+    const update = db.prepare('UPDATE summaries SET evidence_level = ? WHERE id = ?');
+    for (const summary of summaries) update.run(summary.evidence_level || 'unverified', summary.id);
+  });
+  return summaries.filter((summary) => summary.evidence_level === 'unverified').length;
+}
+
+export { evidenceLabel } from './evidence-labels';

@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ArticleRow, SummaryRow } from '@/lib/types';
-import { evidenceLabel } from '@/lib/evidence';
+import { evidenceLabel } from '@/lib/evidence-labels';
 
 function parseTags(value: string | null): string[] {
   try { return value ? JSON.parse(value) : []; } catch { return []; }
@@ -13,9 +13,11 @@ const PAGE_SIZE = 20;
 export default function MatrixBoard({
   summaries,
   articles,
+  initialTopic = '',
 }: {
   summaries: SummaryRow[];
   articles: ArticleRow[];
+  initialTopic?: string;
 }) {
   const articleMap = useMemo(() => new Map(articles.map((a) => [a.id, a])), [articles]);
 
@@ -23,7 +25,8 @@ export default function MatrixBoard({
     () => [...new Set(summaries.flatMap((s) => parseTags(s.tags)))],
     [summaries]
   );
-  const [topic, setTopic] = useState<string>('');
+  const [topic, setTopic] = useState<string>(initialTopic);
+  useEffect(() => { setTopic(initialTopic); setPage(1); }, [initialTopic]);
   const [stance, setStance] = useState<string>('');
   const [page, setPage] = useState(1);
 

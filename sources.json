@@ -1,10 +1,71 @@
 {
   "official": [
-    { "id": "csrc", "name": "证监会要闻", "enabled": true },
-    { "id": "pboc", "name": "人民银行政策公告", "enabled": true }
+    {
+      "id": "csrc",
+      "name": "证监会要闻",
+      "enabled": true
+    },
+    {
+      "id": "pboc",
+      "name": "人民银行政策公告",
+      "enabled": true
+    },
+    {
+      "id": "nbs",
+      "name": "国家统计局数据发布",
+      "enabled": true
+    }
   ],
   "rss": [
-    { "name": "雪球热帖", "url": "https://xueqiu.com/hots/topic/rss", "enabled": true, "tier": "community", "isPrimary": false }
+    {
+      "name": "雪球热帖",
+      "url": "https://xueqiu.com/hots/topic/rss",
+      "enabled": true,
+      "tier": "community",
+      "isPrimary": false
+    },
+    {
+      "name": "美联储 Federal Reserve",
+      "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "欧洲央行 ECB",
+      "url": "https://www.ecb.europa.eu/rss/press.html",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "日本央行 Bank of Japan",
+      "url": "https://www.boj.or.jp/en/rss/whatsnew.xml",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "美国劳工统计局 · 就业",
+      "url": "https://www.bls.gov/feed/empsit.rss",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "美国劳工统计局 · CPI",
+      "url": "https://www.bls.gov/feed/cpi.rss",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "美国能源信息署 EIA · 能源观察",
+      "url": "https://www.eia.gov/rss/todayinenergy.xml",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    }
   ],
   "websites": [
     {
@@ -22,19 +83,133 @@
       "enabled": true,
       "tier": "media",
       "isPrimary": false
+    },
+    {
+      "name": "欧洲统计局 Eurostat",
+      "listUrl": "https://ec.europa.eu/eurostat/web/euro-indicators/overview",
+      "articleSelector": "a[href*=\"/products-euro-indicators/w/\"]",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "国际货币基金组织 IMF",
+      "listUrl": "https://www.imf.org/en/news",
+      "articleSelector": "a[href*=\"/news/articles/\"], a[href*=\"/News/Articles/\"]",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "美国经济分析局 BEA",
+      "listUrl": "https://www.bea.gov/news/current-releases",
+      "articleSelector": "a[href^=\"/news/20\"]",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "欧洲委员会 · 金融政策",
+      "listUrl": "https://finance.ec.europa.eu/finance-news-hub_en",
+      "articleSelector": "a[href^=\"/news/\"]",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "日本经济产业省 METI",
+      "listUrl": "https://www.meti.go.jp/english/press/",
+      "articleSelector": "a[href*=\"/english/press/20\"]",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "工业和信息化部 · 新闻发布",
+      "listUrl": "https://www.miit.gov.cn/xwfb/",
+      "articleSelector": "a[href*=\"/art/\"]",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "商务部 · 新闻发布",
+      "listUrl": "https://www.mofcom.gov.cn/xwfb/",
+      "articleSelector": "a[href*=\"/art/\"]",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
+    },
+    {
+      "name": "文化和旅游部 · 信息发布",
+      "listUrl": "https://www.mct.gov.cn/whzx/",
+      "articleSelector": "a[href*=\"/t20\"]",
+      "enabled": true,
+      "tier": "official",
+      "isPrimary": true
     }
   ],
   "wechat": [
-    { "name": "泽平宏观",           "sogouKeyword": "泽平宏观",           "priority": 1, "enabled": false },
-    { "name": "李大霄",             "sogouKeyword": "李大霄",             "priority": 1, "enabled": false },
-    { "name": "李迅雷金融与投资",    "sogouKeyword": "李迅雷金融与投资",    "priority": 1, "enabled": false },
-    { "name": "华尔街见闻",          "sogouKeyword": "华尔街见闻",         "priority": 1, "enabled": false },
-    { "name": "券商中国",           "sogouKeyword": "券商中国",           "priority": 1, "enabled": false },
-    { "name": "韩秀云讲经济",        "sogouKeyword": "韩秀云讲经济",       "priority": 2, "enabled": false },
-    { "name": "打板宝哥",           "sogouKeyword": "打板宝哥",           "priority": 2, "enabled": false },
-    { "name": "荀玉根思考",          "sogouKeyword": "荀玉根思考",         "priority": 2, "enabled": false },
-    { "name": "孟岩",              "sogouKeyword": "孟岩",              "priority": 2, "enabled": false },
-    { "name": "EncounterAlpha",    "sogouKeyword": "EncounterAlpha",    "priority": 2, "enabled": false }
+    {
+      "name": "泽平宏观",
+      "sogouKeyword": "泽平宏观",
+      "priority": 1,
+      "enabled": false
+    },
+    {
+      "name": "李大霄",
+      "sogouKeyword": "李大霄",
+      "priority": 1,
+      "enabled": false
+    },
+    {
+      "name": "李迅雷金融与投资",
+      "sogouKeyword": "李迅雷金融与投资",
+      "priority": 1,
+      "enabled": false
+    },
+    {
+      "name": "华尔街见闻",
+      "sogouKeyword": "华尔街见闻",
+      "priority": 1,
+      "enabled": false
+    },
+    {
+      "name": "券商中国",
+      "sogouKeyword": "券商中国",
+      "priority": 1,
+      "enabled": false
+    },
+    {
+      "name": "韩秀云讲经济",
+      "sogouKeyword": "韩秀云讲经济",
+      "priority": 2,
+      "enabled": false
+    },
+    {
+      "name": "打板宝哥",
+      "sogouKeyword": "打板宝哥",
+      "priority": 2,
+      "enabled": false
+    },
+    {
+      "name": "荀玉根思考",
+      "sogouKeyword": "荀玉根思考",
+      "priority": 2,
+      "enabled": false
+    },
+    {
+      "name": "孟岩",
+      "sogouKeyword": "孟岩",
+      "priority": 2,
+      "enabled": false
+    },
+    {
+      "name": "EncounterAlpha",
+      "sogouKeyword": "EncounterAlpha",
+      "priority": 2,
+      "enabled": false
+    }
   ],
   "x_accounts": []
 }
